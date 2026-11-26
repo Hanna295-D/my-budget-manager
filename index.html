@@ -60,12 +60,28 @@ dialog::backdrop{background:rgba(40,40,50,.35)}
 #cf{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 18px}
 #cf>p,#cf>button{grid-column:1/-1}#cf>button{justify-self:start}
 @media(max-width:1000px){.grid{grid-template-columns:repeat(2,1fr)}}
+.g3{grid-template-columns:repeat(3,1fr)}.g6{grid-template-columns:repeat(3,1fr)}
+@media(min-width:1300px){.g6{grid-template-columns:repeat(6,1fr)}}
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 16px;align-items:end}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cal .wd{text-align:center;color:var(--mut);font-size:12px}
+.cd{min-height:74px;border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;background:#faf9f7;text-align:left}
+.cd.off{background:none;border:0}.cd.today{border:2px solid var(--ink)}.cd.sel{background:var(--lav)}.cd.od{border:2px solid var(--exp)}
+.cd span{display:flex;gap:3px;flex-wrap:wrap}.dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.dot.inc,.k-inc{background:#bfe3d0}.dot.exp,.k-exp{background:#f2b8bd}.dot.rec,.k-rec{background:#d4ccf1}.dot.inst,.k-inst{background:#f7d3ad}.dot.sav,.k-sav{background:#bcd9f2}
+.dot{border:1px solid rgba(0,0,0,.12)}
+.ring{width:84px;height:84px;border-radius:50%;flex-shrink:0;background:conic-gradient(#b9aee6 calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center}
+.ring.done{background:conic-gradient(#7cc4a0 100%,var(--line) 0)}
+.ring span{background:#fff;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-weight:700}
+.gc{display:flex;gap:16px;align-items:center}.gi{flex:1;min-width:0}
+.chip.st-Overdue{background:var(--rose)}.chip.st-Completed{background:var(--mint)}.chip.st-Duetoday{background:var(--peach)}
+.card .banner{margin:0 0 8px}
 @media(max-width:760px){
+nav{flex-wrap:wrap}nav button{flex:1 0 20%}.cd{min-height:48px;padding:4px}.gc{flex-direction:column;align-items:flex-start}
 .app{flex-direction:column}
 nav{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;display:flex;padding:6px;z-index:5;border-right:0;border-top:1px solid var(--line)}
 .logo{display:none}
 nav button{text-align:center;padding:9px 2px;font-size:12px;margin:0}
-main{padding:16px 14px 90px}
+main{padding:16px 14px 130px}
 .grid{grid-template-columns:1fr 1fr}
 .row{display:flex;flex-wrap:wrap;gap:6px 10px}.m{flex:1 1 100%;order:-1}.a{margin-left:auto}
 .cb{grid-template-columns:90px 1fr 84px}
@@ -86,7 +102,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <button data-v="dashboard">📊 Dashboard</button>
 <button data-v="transactions">🧾 Transactions</button>
 <button data-v="budget">🎯 Budget</button>
-<button data-v="savings">🐷 Savings</button>
+<button data-v="recurring">🔁 Recurring</button>
+<button data-v="installments">💳 Installments</button>
+<button data-v="savings">💰 Savings</button>
+<button data-v="calendar">📅 Calendar</button>
 <button data-v="reports">📈 Reports</button>
 <button data-v="backup">💾 Backup</button>
 </nav>
@@ -112,7 +131,10 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <script>
 const $=s=>document.querySelector(s),KEY='mbm_v1',DLG=$('#dlg'),F=$('#f');
 const DEF={income:['Salary','Freelance','Others'],expense:['Food','Groceries','Transport','Shopping','Bills','Healthcare','Entertainment','Others']};
-const fresh=()=>({v:2,tx:[],budgets:{},catBudgets:{},goals:[],cats:{income:[...DEF.income],expense:[...DEF.expense]}});
+const PDEF={on:true,days:3,rec:true,inst:true,browser:false,instExp:true};
+const DT=v=>typeof v=='string'&&/^\d{4}-\d{2}-\d{2}$/.test(v)&&!isNaN(Date.parse(v));
+const sid=x=>typeof x.id=='string'&&x.id?x.id:uid();
+const fresh=()=>({v:3,tx:[],budgets:{},catBudgets:{},goals:[],rec:[],inst:[],prefs:{...PDEF},cats:{income:[...DEF.income],expense:[...DEF.expense]}});
 let loadErr=false;
 const pad=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),ym=d=>ymd(d).slice(0,7);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -134,12 +156,19 @@ function clean(d){const bad=e=>({ok:false,e}),isI=(v,min=0)=>Number.isInteger(v)
   if(typeof t.cat!='string'||!t.cat.trim())return bad(n+' has no category.');
   const id=typeof t.id=='string'&&t.id?t.id:uid();if(ids.has(id))return bad(n+' has a duplicate ID.');ids.add(id);
   if(!cats[t.type].includes(t.cat))cats[t.type].push(t.cat);
-  T.push({id,desc:t.desc.trim(),amt:t.amt,date:t.date,type:t.type,cat:t.cat,notes:typeof t.notes=='string'?t.notes:'',...(t.demo?{demo:true}:{})})}
+  T.push({id,desc:t.desc.trim(),amt:t.amt,date:t.date,type:t.type,cat:t.cat,notes:typeof t.notes=='string'?t.notes:'',...(t.demo?{demo:true}:{}),...(typeof t.rid=='string'&&DT(t.rdate)?{rid:t.rid,rdate:t.rdate}:{}),...(typeof t.iid=='string'&&Number.isInteger(t.ino)?{iid:t.iid,ino:t.ino}:{})})}
  const B={},C={},G=[];
  for(const[k,v]of Object.entries(bu)){if(!/^\d{4}-\d{2}$/.test(k)||!isI(v))return bad('A monthly budget entry is invalid.');B[k]=v}
  for(const[k,v]of Object.entries(cb)){if(!isI(v))return bad('A category limit is invalid.');C[k]=v}
- for(const x of go){if(!x||typeof x.name!='string'||!x.name.trim()||!isI(x.target,1)||!isI(x.saved))return bad('A savings goal is invalid.');G.push({id:typeof x.id=='string'&&x.id?x.id:uid(),name:x.name.trim().slice(0,60),target:x.target,saved:x.saved})}
- return{ok:true,v:{v:2,tx:T,budgets:B,catBudgets:C,goals:G,cats}}}
+ for(const x of go){if(!x||typeof x.name!='string'||!x.name.trim()||!isI(x.target,1)||!isI(x.saved))return bad('A savings goal is invalid.');if((x.by&&!DT(x.by))||(x.log&&!Array.isArray(x.log)))return bad('A savings goal is invalid.');const L=[];for(const e of x.log||[]){if(!e||!DT(e.d)||!Number.isInteger(e.a)||Math.abs(e.a)>1e11)return bad('A savings contribution is invalid.');L.push({d:e.d,a:e.a})}G.push({id:sid(x),name:x.name.trim().slice(0,60),target:x.target,saved:x.saved,by:x.by||'',log:L})}
+ const RC=[],IN=[],FR=['weekly','monthly','quarterly','yearly'];
+ for(const x of g('recurring','rec')||[]){if(!x||typeof x.desc!='string'||!x.desc.trim()||!isI(x.amt,1)||!['income','expense'].includes(x.type)||!FR.includes(x.freq)||!DT(x.start)||(x.end&&!DT(x.end))||typeof x.cat!='string'||!x.cat.trim())return bad('A recurring item is invalid.');
+  if(!cats[x.type].includes(x.cat))cats[x.type].push(x.cat);RC.push({id:sid(x),desc:x.desc.trim().slice(0,80),amt:x.amt,type:x.type,cat:x.cat,freq:x.freq,start:x.start,end:x.end||'',paused:!!x.paused,last:DT(x.last)?x.last:''})}
+ for(const x of g('installments','inst')||[]){if(!x||typeof x.provider!='string'||!x.provider.trim()||typeof x.desc!='string'||!isI(x.total,1)||!isI(x.n,1)||x.n>600||!isI(x.amt,1)||!DT(x.first)||!Array.isArray(x.pays))return bad('An installment record is invalid.');
+  const Q=[];for(const p of x.pays){if(!p||!isI(p.n,1)||!isI(p.a)||(p.d&&!DT(p.d)))return bad('An installment payment is invalid.');Q.push({n:p.n,d:p.d||'',a:p.a,...(p.h?{h:1}:{})})}
+  IN.push({id:sid(x),provider:x.provider.trim().slice(0,40),desc:x.desc.trim().slice(0,80),total:x.total,n:x.n,amt:x.amt,first:x.first,pays:Q})}
+ const pr=d.prefs&&typeof d.prefs=='object'?d.prefs:{},P={...PDEF};for(const k of['on','rec','inst','browser','instExp'])if(typeof pr[k]=='boolean')P[k]=pr[k];if(Number.isInteger(pr.days)&&pr.days>=0&&pr.days<=30)P.days=pr.days;
+ return{ok:true,v:{v:3,tx:T,budgets:B,catBudgets:C,goals:G,rec:RC,inst:IN,prefs:P,cats}}}
 function load(){try{const raw=localStorage.getItem(KEY);if(!raw)return fresh();try{const r=clean(JSON.parse(raw));if(r.ok)return r.v}catch(e){}try{localStorage.setItem(KEY+'_corrupt',raw)}catch(e){}}catch(e){}loadErr=true;return fresh()}
 let S=load(),view='dashboard',month=ym(new Date()),editId=null,q='',fc='',ft='',fy=month.slice(0,4),fmo=month.slice(5);
 const syncF=()=>{fy=month.slice(0,4);fmo=month.slice(5)};
@@ -148,16 +177,11 @@ function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');cl
 const monthTx=m=>S.tx.filter(t=>t.date.startsWith(m));
 const sums=l=>l.reduce((s,t)=>(s[t.type=='income'?'inc':'exp']+=t.amt,s),{inc:0,exp:0});
 function budgetFor(m){const k=Object.keys(S.budgets).filter(x=>x<=m).sort();return k.length?S.budgets[k.pop()]:0}
-const row=t=>`<div class="row"><div>${t.date}</div><div class="m"><b>${esc(t.desc)}</b>${t.demo?' <span class="tag">demo</span>':''}<small>${esc(t.notes||'')}</small></div><span class="chip">${esc(t.cat)}</span><div class="a ${t.type=='income'?'inc':'exp'}">${t.type=='income'?'+':'−'}${fmt(t.amt)}</div><div class="act"><button data-e="${t.id}">Edit</button><button data-x="${t.id}">Delete</button></div></div>`;
+const row=t=>`<div class="row"><div>${t.date}</div><div class="m"><b>${esc(t.desc)}</b>${t.demo?' <span class="tag">demo</span>':''}${t.rid?' <span class="tag">recurring</span>':''}<small>${esc(t.notes||'')}</small></div><span class="chip">${esc(t.cat)}</span><div class="a ${t.type=='income'?'inc':'exp'}">${t.type=='income'?'+':'−'}${fmt(t.amt)}</div><div class="act"><button data-e="${t.id}">Edit</button><button data-x="${t.id}">Delete</button></div></div>`;
 function prog(){const b=budgetFor(month),e=sums(monthTx(month)).exp;
  if(!b)return'<p class="empty">No budget set yet. <button data-v="budget">Set a budget</button></p>';
  const p=e/b*100,left=b-e;
  return`<div class="prog ${p>100?'over':p>=80?'warn':''}"><i style="width:${Math.min(100,p)}%"></i></div><p>${fmt(e)} of ${fmt(b)} spent (${p.toFixed(0)}%) · ${left>=0?fmt(left)+' left':'<b class="exp">'+fmt(-left)+' over budget</b>'}</p>`}
-function dash(){const l=monthTx(month),s=sums(l),b=budgetFor(month),rec=[...l].sort(cmp).slice(0,5);
- return`<div class="grid"><div class="stat" style="background:var(--mint)"><small>Total income</small><b>${fmt(s.inc)}</b></div><div class="stat" style="background:var(--rose)"><small>Total expenses</small><b>${fmt(s.exp)}</b></div><div class="stat" style="background:var(--lav)"><small>Remaining balance</small><b>${fmt(s.inc-s.exp)}</b></div><div class="stat" style="background:var(--peach)"><small>Monthly budget</small><b>${b?fmt(b):'Not set'}</b></div></div>${alerts()}
-<div class="card"><h2>Budget progress</h2>${prog()}</div>
-<div class="card"><h2>Spending overview</h2>${catBars(l)}</div>
-<div class="card wide"><h2>Recent transactions</h2>${rec.length?rec.map(row).join(''):'<p class="empty">No transactions this month yet.</p>'}<p><button class="pri" id="add">+ Add transaction</button></p></div>`}
 const byCat=l=>{const by={};l.filter(t=>t.type=='expense').forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amt);return Object.entries(by).sort((a,b)=>b[1]-a[1])};
 const catBars=l=>{const e=byCat(l),tot=e.reduce((a,x)=>a+x[1],0);return e.length?e.map(([c,v])=>`<div class="cb"><span>${esc(c)}</span><div class="prog"><i style="width:${v/tot*100}%"></i></div><span style="text-align:right">${fmt(v)}</span></div>`).join(''):'<p class="empty">No expenses recorded for this period.</p>'};
 function alerts(){const l=monthTx(month),by=Object.fromEntries(byCat(l)),a=[];
@@ -174,32 +198,30 @@ function budView(){const b=budgetFor(month),own=S.budgets[month]!=null,by=Object
 <div class="card"><h2>Spending progress</h2>${prog()}${alerts()}</div>
 <div class="card wide"><h2>Category spending limits</h2><p class="note" style="margin-top:0">Monthly limit per expense category (applies to every month). Leave blank for no limit.</p><form id="cf" novalidate>${S.cats.expense.map(c=>{const lim=S.catBudgets[c]||0,v=by[c]||0,p=lim?v/lim*100:0;return`<div class="cl"><label>${esc(c)} (RM)<input data-c="${esc(c)}" type="number" step="0.01" min="0" inputmode="decimal" value="${lim?(lim/100).toFixed(2):''}" placeholder="No limit"></label>${lim?`<div class="prog ${p>100?'over':p>=80?'warn':''}"><i style="width:${Math.min(100,p)}%"></i></div><small>${fmt(v)} of ${fmt(lim)} (${p.toFixed(0)}%)${p>100?' · over limit':p>=80?' · approaching limit':''}</small>`:''}</div>`}).join('')}<p id="cerr" class="exp"></p><button class="pri">Save category limits</button></form></div>
 <div class="card"><h2>Categories</h2><p><b>Income:</b> ${S.cats.income.map(esc).join(', ')}<br><b>Expense:</b> ${S.cats.expense.map(esc).join(', ')}</p><form id="af" class="bar" novalidate><select name="t" aria-label="Category type"><option value="expense">Expense</option><option value="income">Income</option></select><input name="n" maxlength="40" aria-label="New category name" placeholder="New category name"><button class="pri">Add category</button></form><p id="aerr" class="exp"></p></div>`}
-const goalCard=g=>{const p=g.saved/g.target*100;return`<div class="card"><div class="gh"><b>${esc(g.name)}</b><span>${p.toFixed(0)}%</span></div><div class="prog"><i style="width:${Math.min(100,p)}%"></i></div><p>${fmt(g.saved)} of ${fmt(g.target)}${p>=100?' 🎉 Goal reached!':' · '+fmt(g.target-g.saved)+' to go'}</p><div class="act"><button data-ga="${g.id}">+ Add money</button><button data-gw="${g.id}">Withdraw</button><button data-ge="${g.id}">Edit</button><button data-gx="${g.id}">Delete</button></div></div>`};
-function savView(){return`<div class="card wide"><h2>New savings goal</h2><form id="gf" class="bar" novalidate><input name="n" maxlength="60" aria-label="Goal name" placeholder="Goal name (e.g. Emergency fund)"><input name="t" type="number" step="0.01" min="0" aria-label="Target amount (RM)" placeholder="Target (RM)"><input name="s" type="number" step="0.01" min="0" aria-label="Saved so far (RM)" placeholder="Saved so far (RM)"><button class="pri">Add goal</button></form><p id="gerr" class="exp"></p></div>`+(S.goals.length?S.goals.map(goalCard).join(''):'<div class="card wide"><p class="empty">No savings goals yet. Create one above to start tracking your progress.</p></div>')}
-function chart(ms){const mx=Math.max(1,...ms.flatMap(x=>[x.inc,x.exp])),H=180,T=15,g=600/ms.length,w=g*.3;
+function chart(ms,la='Income',lb='Expenses'){const mx=Math.max(1,...ms.flatMap(x=>[x.inc,x.exp])),H=180,T=15,g=600/ms.length,w=g*.3;
  if(!ms.some(x=>x.inc||x.exp))return'<p class="empty">No income or expenses recorded for this period.</p>';
- const bars=ms.map((x,i)=>{const o=i*g,r=(p,v,c,t)=>{const h=v/mx*H;return`<rect x="${o+g*p}" y="${T+H-h}" width="${w}" height="${h}" rx="3" fill="${c}"><title>${t} ${x.l}: ${fmt(v)}</title></rect>`};return r(.17,x.inc,'#9fd5bb','Income')+r(.53,x.exp,'#eeb0b4','Expenses')+`<text x="${o+g/2}" y="${T+H+20}" text-anchor="middle" font-size="12" fill="#7b7f89">${x.l}</text>`}).join('');
- return`<svg viewBox="0 0 600 215" width="100%" role="img" aria-label="Income versus expenses chart"><line x1="0" x2="600" y1="${T+H}" y2="${T+H}" stroke="#ebe9e4"/>${bars}</svg><p><span style="color:#5aae86">■</span> Income &nbsp; <span style="color:#d98b91">■</span> Expenses &nbsp; <small style="color:var(--mut)">Hover or tap a bar for the exact amount. Tallest bar = ${fmt(mx)}.</small></p>`}
+ const bars=ms.map((x,i)=>{const o=i*g,r=(p,v,c,t)=>{const h=v/mx*H;return`<rect x="${o+g*p}" y="${T+H-h}" width="${w}" height="${h}" rx="3" fill="${c}"><title>${t} ${x.l}: ${fmt(v)}</title></rect>`};return r(.17,x.inc,'#9fd5bb',la)+r(.53,x.exp,'#eeb0b4',lb)+`<text x="${o+g/2}" y="${T+H+20}" text-anchor="middle" font-size="12" fill="#7b7f89">${x.l}</text>`}).join('');
+ return`<svg viewBox="0 0 600 215" width="100%" role="img" aria-label="Income versus expenses chart"><line x1="0" x2="600" y1="${T+H}" y2="${T+H}" stroke="#ebe9e4"/>${bars}</svg><p><span style="color:#5aae86">■</span> ${la} &nbsp; <span style="color:#d98b91">■</span> ${lb} &nbsp; <small style="color:var(--mut)">Hover or tap a bar for the exact amount. Tallest bar = ${fmt(mx)}.</small></p>`}
 const mser=(y,m0,n,yy)=>[...Array(n)].map((_,i)=>{const d=new Date(y,m0+i,1);return{l:d.toLocaleString('en-GB',{month:'short'})+(yy?' '+String(d.getFullYear()).slice(2):''),...sums(monthTx(ym(d)))}});
 const stats=s=>`<div class="grid"><div class="stat" style="background:var(--mint)"><small>Income</small><b>${fmt(s.inc)}</b></div><div class="stat" style="background:var(--rose)"><small>Expenses</small><b>${fmt(s.exp)}</b></div><div class="stat" style="background:var(--lav)"><small>Net</small><b>${fmt(s.inc-s.exp)}</b></div><div class="stat" style="background:var(--peach)"><small>Savings rate</small><b>${s.inc>0?((s.inc-s.exp)/s.inc*100).toFixed(0)+'%':'–'}</b></div></div>`;
-function repView(){const[y,m]=month.split('-').map(Number),l=monthTx(month),yl=S.tx.filter(t=>t.date.startsWith(y+'-')),ys=sums(yl),m12=mser(y,0,12);
+function repView0(){const[y,m]=month.split('-').map(Number),l=monthTx(month),yl=S.tx.filter(t=>t.date.startsWith(y+'-')),ys=sums(yl),m12=mser(y,0,12);
  return`<div class="card wide"><h2>Monthly report: ${month}</h2>${stats(sums(l))}<h2>Income vs expenses (last 6 months)</h2>${chart(mser(y,m-6,6,1))}</div>
 <div class="card"><h2>Expenses by category (${month})</h2>${catBars(l)}</div>
 <div class="card wide"><h2>Yearly summary: ${y}</h2>${stats(ys)}${chart(m12)}<div style="overflow-x:auto"><table><tr><th>Month</th><th>Income</th><th>Expenses</th><th>Net</th></tr>${m12.map(x=>`<tr><td>${x.l}</td><td>${fmt(x.inc)}</td><td>${fmt(x.exp)}</td><td class="${x.inc>=x.exp?'inc':'exp'}">${fmt(x.inc-x.exp)}</td></tr>`).join('')}<tr><th>Total</th><th>${fmt(ys.inc)}</th><th>${fmt(ys.exp)}</th><th>${fmt(ys.inc-ys.exp)}</th></tr></table></div></div>
 <div class="card"><h2>Expenses by category (${y})</h2>${catBars(yl)}</div>`}
 function bakView(){const demo=S.tx.some(t=>t.demo);
- return`<div class="card"><h2>Download backup</h2><p>Saves <b>all</b> your data (transactions, budgets, category limits, categories and savings goals) to a .json file. Currently stored: ${S.tx.length} transactions, ${S.goals.length} savings goals.</p><button class="pri" id="jsonEx">Download JSON backup</button> <button id="csv">Export transactions (CSV)</button></div>
+ return`<div class="card"><h2>Download backup</h2><p>Saves <b>all</b> your data (transactions, budgets, category limits, categories, savings goals, recurring items, installments and reminder settings) to a .json file. Currently stored: ${S.tx.length} transactions, ${S.goals.length} savings goals, ${S.rec.length} recurring items, ${S.inst.length} installments.</p><button class="pri" id="jsonEx">Download JSON backup</button> <button id="csv">Export transactions (CSV)</button></div>
 <div class="card"><h2>Restore from backup</h2><p>Choose a BudgetBuddy .json backup. The file is checked first and nothing changes until you confirm. Restoring <b>replaces</b> all current data (one safety copy of it is kept in this browser).</p><input type="file" id="jsonIm" accept=".json,application/json" aria-label="Choose backup file"><div id="bmsg" role="status" aria-live="polite" style="margin-top:12px"></div></div>
 <div class="card"><h2>Demo data</h2><p><button id="demoLoad">Load demo data</button> ${demo?'<button id="demoRm">Remove demo data</button>':''}</p><p class="note">Demo transactions are labelled “demo” and are not real records.</p></div>
 <div class="card danger"><h2>Clear all data</h2><p>Permanently deletes everything stored by BudgetBuddy in this browser. Download a backup first.</p><button id="wipe" class="exp">Delete all data…</button></div>`}
-function exportJson(){const o={app:'BudgetBuddy',backupVersion:2,exportedAt:new Date().toISOString(),data:{transactions:S.tx,budgets:S.budgets,catBudgets:S.catBudgets,categories:S.cats,savingsGoals:S.goals}};
+function exportJson(){const o={app:'BudgetBuddy',backupVersion:3,exportedAt:new Date().toISOString(),data:{transactions:S.tx,budgets:S.budgets,catBudgets:S.catBudgets,categories:S.cats,savingsGoals:S.goals,recurring:S.rec,installments:S.inst,prefs:S.prefs}};
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(o,null,2)],{type:'application/json'}));a.download='budgetbuddy-backup-'+ymd(new Date())+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('Backup downloaded')}
 async function importJson(file){if(!file)return;const say=(t,ok)=>{const m=$('#bmsg');if(m){m.className='banner'+(ok?'':' over');m.textContent=t}};
  if(file.size>5e6)return say('❌ File is too large to be a backup. Nothing was changed.');
  const txt=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.onerror=()=>r(null);f.readAsText(file)});let d;
  try{d=JSON.parse(txt)}catch(e){return say('❌ This file is not valid JSON. Nothing was changed.')}
  if(!d||d.app!=='BudgetBuddy'||!d.data||!Number.isInteger(d.backupVersion))return say('❌ This is not a BudgetBuddy backup file. Nothing was changed.');
- if(d.backupVersion>2)return say('❌ This backup was made by a newer version of BudgetBuddy. Nothing was changed.');
+ if(d.backupVersion>3)return say('❌ This backup was made by a newer version of BudgetBuddy. Nothing was changed.');
  const r=clean(d.data);if(!r.ok)return say('❌ '+r.e+' Nothing was changed.');const n=r.v;
  if(!confirm(`Restore backup from ${String(d.exportedAt||'unknown date').slice(0,25)}?\n\nThis REPLACES your current data (${S.tx.length} transactions, ${S.goals.length} goals) with the backup (${n.tx.length} transactions, ${n.goals.length} goals).\n\nContinue?`))return say('Restore cancelled. Nothing was changed.',1);
  const old=S,prev=JSON.stringify(S);S=n;
@@ -210,25 +232,137 @@ function wipe(){if(!confirm('⚠️ This permanently deletes ALL transactions, b
  if((prompt('Final check: type DELETE (capital letters) to erase everything.')||'').trim()!=='DELETE')return toast('Nothing was deleted.');
  S=fresh();try{localStorage.removeItem(KEY+'_prev');localStorage.removeItem(KEY+'_corrupt')}catch(e){}save();render();toast('All data deleted')}
 const askAmt=(m,def)=>{const x=prompt(m,def!=null?(def/100).toFixed(2):'');if(x==null)return null;const v=Math.round(parseFloat(x)*100);if(!isFinite(v)||v<=0||v>1e11){toast('Enter a valid amount.');return null}return v};
-function addGoal(f){const e=f.elements,n=e.n.value.trim(),t=Math.round(parseFloat(e.t.value)*100),v=e.s.value===''?0:Math.round(parseFloat(e.s.value)*100),er=m=>{$('#gerr').textContent=m};
- if(!n)return er('Enter a goal name.');if(!isFinite(t)||t<=0||t>1e11)return er('Enter a target amount above RM 0.00.');if(!isFinite(v)||v<0||v>1e11)return er('Saved amount must be 0 or more.');
- S.goals.push({id:uid(),name:n.slice(0,60),target:t,saved:v});save();render();toast('Goal added')}
-function goalOp(k,id){const g=S.goals.find(x=>x.id==id);if(!g)return;
- if(k=='x'){if(!confirm('Delete savings goal “'+g.name+'”?'))return;S.goals=S.goals.filter(x=>x!=g)}
- else if(k=='e'){const n=prompt('Goal name:',g.name);if(n==null)return;const t=askAmt('Target amount (RM):',g.target);if(!n.trim()||t==null)return toast('Name and target are required.');g.name=n.trim().slice(0,60);g.target=t}
- else{const v=askAmt(k=='a'?'Amount to add (RM):':'Amount to withdraw (RM):');if(v==null)return;if(k=='w'&&v>g.saved)return toast('You cannot withdraw more than is saved.');g.saved+=k=='a'?v:-v}
- save();render()}
 function saveCatLimits(){const nb={};for(const i of document.querySelectorAll('[data-c]')){if(i.value==='')continue;const v=Math.round(parseFloat(i.value)*100);if(!isFinite(v)||v<0||v>1e11)return $('#cerr').textContent='“'+i.dataset.c+'” has an invalid amount.';if(v)nb[i.dataset.c]=v}
  S.catBudgets=nb;save();render();toast('Category limits saved')}
 function addCat(f){const t=f.elements.t.value,n=f.elements.n.value.trim(),er=m=>{$('#aerr').textContent=m};
  if(!n||n.length>40)return er('Enter a category name (up to 40 characters).');if(S.cats[t].some(c=>c.toLowerCase()==n.toLowerCase()))return er('That category already exists.');
  S.cats[t].push(n);save();render();toast('Category added')}
-const V={dashboard:'Dashboard',transactions:'Transactions',budget:'Budget',savings:'Savings Goals',reports:'Reports',backup:'Backup & Restore'};
-function render(){
+
+let recEdit=null,instEdit=null,calDay='';
+const FQ={weekly:'Weekly',monthly:'Monthly',quarterly:'Quarterly',yearly:'Yearly'},LBL={inc:'Income',exp:'Expense',rec:'Recurring',inst:'Installment',sav:'Savings'};
+function addP(st,k,f){const[y,m,d]=st.split('-').map(Number);if(f=='weekly')return ymd(new Date(y,m-1,d+7*k));const t=new Date(y,m-1+k*(f=='monthly'?1:f=='quarterly'?3:12),1);t.setDate(Math.min(d,new Date(t.getFullYear(),t.getMonth()+1,0).getDate()));return ymd(t)}
+function occ(r,to,from){const o=[];for(let k=0;k<1500;k++){const d=addP(r.start,k,r.freq);if(d>to||(r.end&&d>r.end))break;if(!from||d>=from)o.push(d)}return o}
+function genRec(){let n=0;const td=ymd(new Date());for(const r of S.rec){if(r.paused)continue;for(const d of occ(r,td)){if(r.last&&d<=r.last)continue;if(!S.tx.some(t=>t.rid==r.id&&t.rdate==d)){S.tx.push({id:uid(),desc:r.desc,amt:r.amt,date:d,type:r.type,cat:r.cat,notes:'Recurring',rid:r.id,rdate:d});n++}r.last=d}}if(n){save();toast(n+' recurring transaction'+(n>1?'s':'')+' added')}return n}
+const payable=x=>Math.max(x.total,x.amt*x.n),paidAmt=x=>x.pays.reduce((a,p)=>a+p.a,0),out=x=>Math.max(0,payable(x)-paidAmt(x)),instDone=x=>x.pays.length>=x.n||out(x)<=0,instAmt=(x,no)=>no==x.n?payable(x)-x.amt*(x.n-1):x.amt,nextDue=x=>addP(x.first,x.pays.length,'monthly');
+const instOut=()=>S.inst.reduce((a,x)=>a+out(x),0),savTotal=()=>S.goals.reduce((a,g)=>a+g.saved,0);
+function instStatus(x){if(instDone(x))return'Completed';const d=nextDue(x),td=ymd(new Date());return d<td?'Overdue':d==td?'Due today':'Active'}
+function upcoming(){const td=ymd(new Date()),far=ymd(new Date(Date.now()+60*864e5)),o=[];
+ S.rec.filter(r=>!r.paused&&r.type=='expense').forEach(r=>occ(r,far,td).forEach(d=>o.push({d,label:r.desc,a:r.amt,k:'rec'})));
+ S.inst.forEach(x=>{if(instDone(x))return;const no=x.pays.length+1,d=nextDue(x);if(d<=far)o.push({d,label:x.provider+': '+x.desc+` (${no}/${x.n})`,a:instAmt(x,no),k:'inst',od:d<td})});
+ o.forEach(x=>{x.today=x.d==td});return o.sort((a,b)=>a.d.localeCompare(b.d))}
+function reminders(){const P=S.prefs,td=Date.parse(ymd(new Date()));if(!P.on)return[];return upcoming().filter(x=>(x.k=='rec'?P.rec:P.inst)&&(x.od||x.today||(Date.parse(x.d)-td)/864e5<=P.days))}
+const remText=i=>`${i.od?'⚠️ Overdue':i.today?'📌 Due today':'⏰ Due '+i.d}: ${esc(i.label)} · ${fmt(i.a)}`;
+const remCard=()=>{const r=reminders();return r.length?`<div class="card wide"><h2>🔔 Reminders</h2>${r.map(i=>`<div class="banner${i.od?' over':''}">${remText(i)}</div>`).join('')}</div>`:''};
+const upList=n=>{const td=Date.parse(ymd(new Date())),l=upcoming().filter(x=>x.od||(Date.parse(x.d)-td)/864e5<=n);return l.length?l.map(i=>`<div class="row" style="grid-template-columns:90px 1fr auto"><div>${i.d}</div><div class="m"><b>${esc(i.label)}</b><small>${i.od?'⚠️ Overdue':i.today?'Due today':i.k=='inst'?'Installment':'Recurring bill'}</small></div><div class="a exp">${fmt(i.a)}</div></div>`).join(''):'<p class="empty">No payments due soon.</p>'};
+const goalMini=()=>S.goals.length?S.goals.slice(0,5).map(g=>{const p=g.saved/g.target*100;return`<div class="cb"><span>${p>=100?'🌟':'🎯'} ${esc(g.name)}</span><div class="prog"><i style="width:${Math.min(100,p)}%"></i></div><span style="text-align:right">${p.toFixed(0)}%</span></div>`}).join(''):'<p class="empty">No savings goals yet.</p>';
+function dash(){const l=monthTx(month),s=sums(l),b=budgetFor(month),rec=[...l].sort(cmp).slice(0,5),c=(k,t,v)=>`<div class="stat" style="background:var(--${k})"><small>${t}</small><b>${v}</b></div>`;
+ return`<div class="grid g6">${c('mint','Total income',fmt(s.inc))}${c('rose','Total expenses',fmt(s.exp))}${c('lav','Remaining balance',fmt(s.inc-s.exp))}${c('peach','Monthly budget',b?fmt(b):'Not set')}${c('mint','💰 Total savings',fmt(savTotal()))}${c('rose','💳 Outstanding installments',fmt(instOut()))}</div>${alerts()}${remCard()}
+<div class="card"><h2>Budget progress</h2>${prog()}</div>
+<div class="card"><h2>🎯 Savings progress</h2>${goalMini()}</div>
+<div class="card"><h2>Upcoming payments</h2>${upList(30)}</div>
+<div class="card"><h2>Spending overview</h2>${catBars(l)}</div>
+<div class="card wide"><h2>Recent transactions</h2>${rec.length?rec.map(row).join(''):'<p class="empty">No transactions this month yet.</p>'}<p><button class="pri" id="add">+ Add transaction</button></p></div>`}
+const catOpts=(t,sel)=>S.cats[t].map(c=>`<option${c==sel?' selected':''}>${esc(c)}</option>`).join('');
+const fillRc=f=>{f.elements.cat.innerHTML=catOpts(f.elements.type.value)};
+function recView(){const r=recEdit&&S.rec.find(x=>x.id==recEdit)||{type:'expense',freq:'monthly',start:ymd(new Date()),end:'',desc:'',amt:0,cat:''},td=ymd(new Date());
+ const rows=S.rec.map(x=>{let nx='',k=0;for(;k<1500;k++){nx=addP(x.start,k,x.freq);if(nx>td)break}const ended=x.end&&nx>x.end;return`<div class="row"><div>${x.paused||ended?'–':nx}</div><div class="m"><b>${esc(x.desc)}</b><small>${x.paused?'⏸ Paused':ended?'Ended':'Active'} · ${esc(x.cat)}${x.end?' · until '+x.end:''}</small></div><span class="chip">${FQ[x.freq]}</span><div class="a ${x.type=='income'?'inc':'exp'}">${x.type=='income'?'+':'−'}${fmt(x.amt)}</div><div class="act"><button data-rp="${x.id}">${x.paused?'Resume':'Pause'}</button><button data-re="${x.id}">Edit</button><button data-rx="${x.id}">Cancel</button></div></div>`}).join('');
+ const up=S.rec.filter(x=>!x.paused).flatMap(x=>occ(x,ymd(new Date(Date.now()+60*864e5)),td).filter(d=>d>td).map(d=>({d,x}))).sort((a,b)=>a.d.localeCompare(b.d));
+ return`<div class="card wide"><h2>${r.id?'Edit':'New'} recurring income / expense</h2><form id="rf" class="fg" novalidate>
+<label>Type<select name="type"><option value="expense"${r.type=='expense'?' selected':''}>Expense</option><option value="income"${r.type=='income'?' selected':''}>Income</option></select></label>
+<label>Description<input name="desc" maxlength="80" value="${esc(r.desc)}" placeholder="e.g. Rent, Salary, Netflix"></label>
+<label>Amount (RM)<input name="amt" type="number" step="0.01" min="0" inputmode="decimal" value="${r.amt?(r.amt/100).toFixed(2):''}"></label>
+<label>Category<select name="cat">${catOpts(r.type,r.cat)}</select></label>
+<label>Frequency<select name="freq">${Object.entries(FQ).map(([k,v])=>`<option value="${k}"${k==r.freq?' selected':''}>${v}</option>`).join('')}</select></label>
+<label>Start date<input name="start" type="date" value="${r.start}"></label>
+<label>End date (optional)<input name="end" type="date" value="${r.end||''}"></label>
+<div><button class="pri">${r.id?'Save changes':'Add recurring'}</button>${r.id?' <button type="button" id="rcancel">Cancel</button>':''}</div></form><p id="rerr" class="exp"></p><p class="note">Transactions are created automatically for each due date up to today (a past start date creates the missed ones now), once per date, so nothing is duplicated.</p></div>
+<div class="card"><h2>Your recurring items</h2>${rows||'<p class="empty">No recurring items yet. Add salary, rent, subscriptions or insurance above.</p>'}</div>
+<div class="card"><h2>Upcoming (next 60 days)</h2>${up.length?up.slice(0,15).map(u=>`<div class="row" style="grid-template-columns:90px 1fr auto"><div>${u.d}</div><div class="m"><b>${esc(u.x.desc)}</b></div><div class="a ${u.x.type=='income'?'inc':'exp'}">${fmt(u.x.amt)}</div></div>`).join(''):'<p class="empty">Nothing scheduled.</p>'}</div>`}
+function saveRec(f){const e=f.elements,desc=e.desc.value.trim(),a=Math.round(parseFloat(e.amt.value)*100),st=e.start.value,en=e.end.value,er=m=>{$('#rerr').textContent=m};
+ if(!desc)return er('Enter a description.');if(!isFinite(a)||a<=0||a>1e11)return er('Enter an amount above RM 0.00.');if(!DT(st))return er('Choose a start date.');if(en&&(!DT(en)||en<st))return er('End date must be on or after the start date.');
+ const o={desc,amt:a,type:e.type.value,cat:e.cat.value,freq:e.freq.value,start:st,end:en};
+ if(recEdit){const r=S.rec.find(x=>x.id==recEdit);if(r.start!=st||r.freq!=o.freq)r.last='';Object.assign(r,o)}else S.rec.push({id:uid(),...o,paused:false,last:''});
+ recEdit=null;save();render();toast('Recurring item saved')}
+function recOp(k,id){const r=S.rec.find(x=>x.id==id);if(!r)return;
+ if(k=='p'){r.paused=!r.paused;if(!r.paused)r.last=ymd(new Date(Date.now()-864e5))}
+ else if(k=='e'){recEdit=id;render();return}
+ else if(!confirm('Cancel recurring “'+r.desc+'”? Transactions already created are kept.'))return;else S.rec=S.rec.filter(x=>x!=r);
+ save();render()}
+function instView(){const x=instEdit&&S.inst.find(i=>i.id==instEdit)||{provider:'',desc:'',total:0,n:'',amt:0,first:ymd(new Date())},act=S.inst.filter(i=>!instDone(i)),td=ymd(new Date()),od=act.filter(i=>nextDue(i)<td),c=(k,t,v)=>`<div class="stat" style="background:var(--${k})"><small>${t}</small><b>${v}</b></div>`;
+ const card=i=>{const st=instStatus(i),p=paidAmt(i)/payable(i)*100,last=i.pays[i.pays.length-1];return`<div class="card"><div class="gh"><b>${esc(i.provider)}: ${esc(i.desc)}</b><span class="chip st-${st.replace(' ','')}">${st}</span></div><div class="prog"><i style="width:${Math.min(100,p)}%"></i></div><p>${i.pays.length} of ${i.n} paid (${p.toFixed(0)}%) · Original ${fmt(i.total)} · Monthly ${fmt(i.amt)}<br>Paid ${fmt(paidAmt(i))} · <b>Outstanding ${fmt(out(i))}</b>${instDone(i)?'':'<br>Next due: <b>'+nextDue(i)+'</b> ('+fmt(instAmt(i,i.pays.length+1))+')'}</p><div class="act">${instDone(i)?'':`<button data-ip="${i.id}">Mark paid</button>`}${last&&!last.h?`<button data-iu="${i.id}">Undo last</button>`:''}<button data-ie="${i.id}">Edit</button><button data-ix="${i.id}">Delete</button></div></div>`};
+ return`<div class="grid">${c('rose','Total outstanding',fmt(instOut()))}${c('peach','Monthly commitments',fmt(act.reduce((a,i)=>a+i.amt,0)))}${c('lav','Active plans',act.length)}${c('rose','Overdue',od.length?od.length+' · '+fmt(od.reduce((a,i)=>a+instAmt(i,i.pays.length+1),0)):'None')}</div>
+<div class="card wide"><h2>${x.id?'Edit':'New'} installment / BNPL</h2><form id="nf" class="fg" novalidate>
+<label>Provider<input name="prov" list="provs" maxlength="40" value="${esc(x.provider)}" placeholder="SPayLater, Atome…"><datalist id="provs"><option>SPayLater</option><option>Atome</option><option>Credit card installment</option><option>Personal installment</option><option>Other BNPL</option></datalist></label>
+<label>Purchase description<input name="desc" maxlength="80" value="${esc(x.desc)}"></label>
+<label>Original amount (RM)<input name="total" type="number" step="0.01" min="0" inputmode="decimal" value="${x.total?(x.total/100).toFixed(2):''}"></label>
+<label>Number of installments<input name="n" type="number" step="1" min="1" max="600" value="${x.n}"></label>
+<label>Monthly installment (RM)<input name="amt" type="number" step="0.01" min="0" inputmode="decimal" value="${x.amt?(x.amt/100).toFixed(2):''}" placeholder="Blank = amount ÷ number"></label>
+<label>First due date<input name="first" type="date" value="${x.first}"></label>
+${x.id?'':'<label>Installments already paid<input name="done" type="number" step="1" min="0" value="0"></label>'}
+<div><button class="pri">${x.id?'Save changes':'Add installment'}</button>${x.id?' <button type="button" id="icancel">Cancel</button>':''}</div></form><p id="ierr" class="exp"></p></div>
+${S.inst.length?S.inst.map(card).join(''):'<div class="card wide"><p class="empty">💳 No installments yet. Add SPayLater, Atome, credit card or personal installment plans above.</p></div>'}`}
+function saveInst(f){const e=f.elements,er=m=>{$('#ierr').textContent=m},pv=e.prov.value.trim(),ds=e.desc.value.trim(),t=Math.round(parseFloat(e.total.value)*100),n=parseInt(e.n.value),fd=e.first.value;
+ let a=e.amt.value===''?Math.round(t/n):Math.round(parseFloat(e.amt.value)*100);const dn=e.done?(e.done.value===''?0:parseInt(e.done.value)):0;
+ if(!pv)return er('Enter the provider.');if(!ds)return er('Enter a purchase description.');if(!isFinite(t)||t<=0||t>1e11)return er('Enter the original amount.');if(!Number.isInteger(n)||n<1||n>600)return er('Installments must be 1 to 600.');
+ if(!isFinite(a)||a<=0||a>1e11)return er('Enter a valid monthly amount.');if(!DT(fd))return er('Choose the first due date.');if(!Number.isInteger(dn)||dn<0||dn>n)return er('Paid installments must be between 0 and '+n+'.');
+ const o={provider:pv,desc:ds,total:t,n,amt:a,first:fd};
+ if(instEdit){const x=S.inst.find(i=>i.id==instEdit);if(n<x.pays.length)return er('Cannot be fewer than the '+x.pays.length+' payments already made.');Object.assign(x,o)}
+ else{const x={id:uid(),...o,pays:[]};for(let i=1;i<=dn;i++)x.pays.push({n:i,d:'',a:instAmt(x,i),h:1});S.inst.push(x)}
+ instEdit=null;save();render();toast('Installment saved')}
+function instOp(k,id){const x=S.inst.find(i=>i.id==id);if(!x)return;
+ if(k=='e'){instEdit=id;render();return}
+ if(k=='x'){if(!confirm('Delete “'+x.desc+'”? Expenses already recorded for its payments are kept.'))return;S.inst=S.inst.filter(i=>i!=x)}
+ else if(k=='p'){const no=x.pays.length+1,a=instAmt(x,no),td=ymd(new Date()),rx=S.prefs.instExp;
+  if(!confirm(`Mark installment ${no}/${x.n} (${fmt(a)}) as paid today${rx?' and record it as an expense':''}?`))return;
+  x.pays.push({n:no,d:td,a});
+  if(rx&&!S.tx.some(t=>t.iid==x.id&&t.ino==no)){if(!S.cats.expense.includes('Installments'))S.cats.expense.push('Installments');S.tx.push({id:uid(),desc:x.provider+': '+x.desc+` (${no}/${x.n})`,amt:a,date:td,type:'expense',cat:'Installments',notes:'Installment payment',iid:x.id,ino:no})}}
+ else if(k=='u'){const p=x.pays[x.pays.length-1];if(!p||p.h||!confirm('Undo payment '+p.n+'? Its recorded expense will be removed.'))return;x.pays.pop();S.tx=S.tx.filter(t=>!(t.iid==x.id&&t.ino==p.n))}
+ save();render()}
+const goalCard=g=>{const p=g.saved/g.target*100,dn=g.saved>=g.target,rem=Math.max(0,g.target-g.saved);let est='';
+ if(!dn&&g.by){const dd=(Date.parse(g.by)-Date.parse(ymd(new Date())))/864e5;est=dd<0?'⏰ Target date has passed':'Save about <b>'+fmt(Math.ceil(rem/Math.max(1,Math.ceil(dd/30.44))))+'</b> per month'}
+ return`<div class="card gc"><div class="ring${dn?' done':''}" style="--p:${Math.min(100,p).toFixed(1)}"><span>${p.toFixed(0)}%</span></div><div class="gi"><b>${dn?'🌟':'🎯'} ${esc(g.name)}</b><p>${fmt(g.saved)} of ${fmt(g.target)} · ${dn?'Completed!':fmt(rem)+' remaining'}${g.by?'<br>Target date: '+g.by:''}${est?'<br>'+est:''}${g.log.length?'<br><small>🏦 '+g.log.slice(-3).reverse().map(e=>e.d+' '+(e.a>0?'+':'−')+fmt(Math.abs(e.a))).join(' · ')+'</small>':''}</p><div class="act"><button data-ga="${g.id}">🏦 Contribute</button><button data-gw="${g.id}">Withdraw</button><button data-ge="${g.id}">Edit</button><button data-gx="${g.id}">Delete</button></div></div></div>`};
+function savView(){const A=S.goals.filter(g=>g.saved<g.target),D=S.goals.filter(g=>g.saved>=g.target),c=(k,t,v)=>`<div class="stat" style="background:var(--${k})"><small>${t}</small><b>${v}</b></div>`,h=t=>`<h2 style="grid-column:1/-1;margin:6px 0 0">${t}</h2>`;
+ return`<div class="card wide"><h2>🎯 New savings goal</h2><form id="gf" class="fg" novalidate><label>Goal name<input name="n" maxlength="60" placeholder="e.g. Emergency fund"></label><label>Target (RM)<input name="t" type="number" step="0.01" min="0"></label><label>Saved so far (RM)<input name="s" type="number" step="0.01" min="0"></label><label>Target date (optional)<input name="by" type="date"></label><div><button class="pri">Add goal</button></div></form><p id="gerr" class="exp"></p></div>
+<div class="grid g3">${c('mint','💰 Total savings',fmt(savTotal()))}${c('lav','🎯 Active goals',A.length)}${c('peach','🌟 Completed goals',D.length)}</div>
+${S.goals.length?'':'<div class="card wide"><p class="empty">🎯 No savings goals yet. Create one above to start tracking your progress.</p></div>'}${A.length?h('🎯 Active goals')+A.map(goalCard).join(''):''}${D.length?h('🌟 Completed goals')+D.map(goalCard).join(''):''}`}
+function addGoal(f){const e=f.elements,n=e.n.value.trim(),t=Math.round(parseFloat(e.t.value)*100),v=e.s.value===''?0:Math.round(parseFloat(e.s.value)*100),by=e.by.value,er=m=>{$('#gerr').textContent=m};
+ if(!n)return er('Enter a goal name.');if(!isFinite(t)||t<=0||t>1e11)return er('Enter a target amount above RM 0.00.');if(!isFinite(v)||v<0||v>1e11)return er('Saved amount must be 0 or more.');if(by&&!DT(by))return er('Choose a valid target date.');
+ S.goals.push({id:uid(),name:n.slice(0,60),target:t,saved:v,by,log:[]});save();render();toast('Goal added')}
+function goalOp(k,id){const g=S.goals.find(x=>x.id==id);if(!g)return;
+ if(k=='x'){if(!confirm('Delete savings goal “'+g.name+'”?'))return;S.goals=S.goals.filter(x=>x!=g)}
+ else if(k=='e'){const n=prompt('Goal name:',g.name);if(n==null)return;const t=askAmt('Target amount (RM):',g.target);if(!n.trim()||t==null)return toast('Name and target are required.');const by=prompt('Target date (YYYY-MM-DD), blank for none:',g.by||'');if(by==null)return;if(by.trim()&&!DT(by.trim()))return toast('Date must look like 2027-06-30.');g.name=n.trim().slice(0,60);g.target=t;g.by=by.trim()}
+ else{const v=askAmt(k=='a'?'Contribution amount (RM):':'Amount to withdraw (RM):');if(v==null)return;if(k=='w'&&v>g.saved)return toast('You cannot withdraw more than is saved.');g.saved+=k=='a'?v:-v;g.log.push({d:ymd(new Date()),a:k=='a'?v:-v})}
+ save();render()}
+function evMap(){const[y,m]=month.split('-').map(Number),last=month+'-'+pad(new Date(y,m,0).getDate()),td=ymd(new Date()),E={},add=(d,e)=>{if(d.startsWith(month))(E[d]=E[d]||[]).push(e)};
+ monthTx(month).forEach(t=>add(t.date,{k:t.type=='income'?'inc':'exp',t:t.desc,a:t.amt}));
+ S.rec.filter(r=>!r.paused).forEach(r=>occ(r,last,month+'-01').forEach(d=>{if(d>td)add(d,{k:'rec',t:r.desc+(r.type=='income'?' (income)':' (bill)'),a:r.amt})}));
+ S.inst.forEach(x=>{for(let no=x.pays.length+1;no<=x.n;no++){const d=addP(x.first,no-1,'monthly');add(d,{k:'inst',t:x.provider+': '+x.desc+` (${no}/${x.n})`,a:instAmt(x,no),od:d<td})}});
+ S.goals.forEach(g=>g.log.forEach(e=>add(e.d,{k:'sav',t:(e.a>0?'Contribution: ':'Withdrawal: ')+g.name,a:Math.abs(e.a)})));return E}
+function calView(){const[y,m]=month.split('-').map(Number),E=evMap(),td=ymd(new Date()),lead=(new Date(y,m-1,1).getDay()+6)%7,dim=new Date(y,m,0).getDate(),sel=calDay&&calDay.startsWith(month)?calDay:(td.startsWith(month)?td:month+'-01'),P=S.prefs;
+ let cells=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="wd">${d}</div>`).join('')+'<div class="cd off"></div>'.repeat(lead);
+ for(let d=1;d<=dim;d++){const k=month+'-'+pad(d),ev=E[k]||[];cells+=`<button class="cd${k==td?' today':''}${k==sel?' sel':''}${ev.some(e=>e.od)?' od':''}" data-day="${k}" aria-label="${k}: ${ev.length} activities"><b>${d}</b><span>${[...new Set(ev.map(e=>e.k))].map(x=>`<i class="dot ${x}"></i>`).join('')}</span></button>`}
+ const ev=E[sel]||[],ck=(p,t)=>`<label style="color:var(--ink)"><input type="checkbox" data-p="${p}" style="width:auto"${P[p]?' checked':''}> ${t}</label>`;
+ return`<div class="card wide"><h2>📅 ${month}</h2><div class="cal">${cells}</div><p style="margin-bottom:0">${Object.entries(LBL).map(([k,v])=>`<i class="dot ${k}"></i> ${v} &nbsp;`).join('')}<small style="color:var(--mut)"> · red outline = overdue payment · dark outline = today</small></p></div>
+<div class="card"><h2>${sel}</h2>${ev.length?ev.map(e=>`<div class="row" style="grid-template-columns:auto 1fr auto"><span class="chip k-${e.k}">${LBL[e.k]}</span><div class="m">${esc(e.t)}${e.od?' ⚠️ overdue':''}</div><div class="a">${fmt(e.a)}</div></div>`).join(''):'<p class="empty">Nothing recorded on this day.</p>'}</div>
+<div class="card"><h2>🔔 Reminder settings</h2>${ck('on','Show in-app reminders')}<br>${ck('rec','Include recurring bills')}<br>${ck('inst','Include installments')}<br>${ck('instExp','Record installment payments as expenses when marked paid')}<br><label>Remind me this many days before (0–30)<input data-p="days" type="number" min="0" max="30" step="1" value="${P.days}" style="max-width:120px"></label>${ck('browser','Also use browser notifications (asks permission; works only while BudgetBuddy is open)')}</div>`}
+function setPref(el){const k=el.dataset.p,P=S.prefs;
+ if(k=='days')P.days=Math.max(0,Math.min(30,parseInt(el.value)||0));
+ else if(k=='browser'){if(el.checked){if(!('Notification' in window)){el.checked=false;return toast('Browser notifications are not supported here.')}Notification.requestPermission().then(r=>{P.browser=r=='granted';if(!P.browser)toast('Permission not granted. In-app reminders only.');save();render()});return}P.browser=false}
+ else P[k]=el.checked;save();render()}
+function notifyDue(){try{if(!S.prefs.browser||!('Notification' in window)||Notification.permission!='granted')return;const td=ymd(new Date()),l=reminders().filter(x=>x.od||x.today);if(!l.length||localStorage.getItem(KEY+'_n')==td)return;new Notification('BudgetBuddy',{body:l.slice(0,4).map(i=>i.label+' '+fmt(i.a)).join('\n')});localStorage.setItem(KEY+'_n',td)}catch(e){}}
+function repView(){const[y,m]=month.split('-').map(Number),cur=Object.fromEntries(byCat(monthTx(month))),prv=Object.fromEntries(byCat(monthTx(ym(new Date(y,m-2,1))))),keys=[...new Set([...Object.keys(cur),...Object.keys(prv)])].sort((a,b)=>(cur[b]||0)-(cur[a]||0)),e=byCat(monthTx(month)),act=S.inst.filter(i=>!instDone(i));
+ const sm=[...Array(6)].map((_,i)=>{const d=new Date(y,m-6+i,1),k=ym(d);let c=0,w=0;S.goals.forEach(g=>g.log.forEach(x=>{if(x.d.startsWith(k)){if(x.a>0)c+=x.a;else w-=x.a}}));return{l:d.toLocaleString('en-GB',{month:'short'})+' '+String(d.getFullYear()).slice(2),inc:c,exp:w}});
+ const prov={};act.forEach(i=>prov[i.provider]=(prov[i.provider]||0)+out(i));
+ return repView0()+`<div class="card"><h2>Highlights (${month})</h2><p>🔺 Highest spending: <b>${e.length?esc(e[0][0])+' · '+fmt(e[0][1]):'–'}</b><br>✅ Lowest spending: <b>${e.length?esc(e[e.length-1][0])+' · '+fmt(e[e.length-1][1]):'–'}</b></p></div>
+<div class="card"><h2>Monthly spending comparison</h2>${keys.length?`<div style="overflow-x:auto"><table><tr><th>Category</th><th>Last month</th><th>${month}</th><th>Change</th></tr>${keys.map(k=>{const a=prv[k]||0,b=cur[k]||0;return`<tr><td>${esc(k)}</td><td>${fmt(a)}</td><td>${fmt(b)}</td><td class="${b>a?'exp':'inc'}">${a?((b-a)/a*100).toFixed(0)+'%':'new'}</td></tr>`}).join('')}</table></div>`:'<p class="empty">No expenses to compare.</p>'}</div>
+<div class="card wide"><h2>🏦 Savings contributions (last 6 months)</h2>${chart(sm,'Contributions','Withdrawals')}<p>Total savings across goals: <b>${fmt(savTotal())}</b></p></div>
+<div class="card"><h2>💳 Installment commitments</h2><p>Total outstanding debt: <b>${fmt(instOut())}</b><br>Monthly commitments: <b>${fmt(act.reduce((a,i)=>a+i.amt,0))}</b></p>${Object.keys(prov).length?Object.entries(prov).map(([k,v])=>`<div class="cb"><span>${esc(k)}</span><div class="prog"><i style="width:${v/instOut()*100}%"></i></div><span style="text-align:right">${fmt(v)}</span></div>`).join(''):'<p class="empty">No active installments.</p>'}</div>`}
+const V={dashboard:'Dashboard',transactions:'Transactions',budget:'Budget',savings:'Savings',recurring:'Recurring',installments:'Installments & BNPL',calendar:'Financial Calendar',reports:'Reports',backup:'Backup & Restore'};
+function render(){genRec();
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==view));
  $('#ttl').textContent=V[view];$('#mon').value=month;
  $('#demo').innerHTML=S.tx.some(t=>t.demo)?'<div class="banner">Demo data is present. These are NOT real records. <button id="demoRm">Remove demo data</button></div>':'';
- $('#main').innerHTML=({dashboard:dash,transactions:txView,budget:budView,savings:savView,reports:repView,backup:bakView})[view]();
+ $('#main').innerHTML=({dashboard:dash,transactions:txView,budget:budView,savings:savView,recurring:recView,installments:instView,calendar:calView,reports:repView,backup:bakView})[view]();
  if(view=='transactions')renderList();
 }
 function fillCats(sel){const e=F.elements,l=S.cats[e.type.value];e.cat.innerHTML=l.map(c=>`<option>${c}</option>`).join('');if(sel&&l.includes(sel))e.cat.value=sel}
@@ -262,9 +396,9 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  else if(b.id=='pm')shift(-1);else if(b.id=='nm')shift(1);else if(b.id=='demoLoad')demo();
  else if(b.id=='demoRm'){S.tx=S.tx.filter(t=>!t.demo);save();render();toast('Demo data removed')}
  else if(b.id=='bRm'){delete S.budgets[month];save();render()}
- else if(b.id=='wipe')wipe();else if(b.id=='jsonEx')exportJson();else if(d.ga)goalOp('a',d.ga);else if(d.gw)goalOp('w',d.gw);else if(d.ge)goalOp('e',d.ge);else if(d.gx)goalOp('x',d.gx)});
+ else if(b.id=='wipe')wipe();else if(d.day){calDay=d.day;render()}else if(d.rp)recOp('p',d.rp);else if(d.re)recOp('e',d.re);else if(d.rx)recOp('x',d.rx);else if(d.ip)instOp('p',d.ip);else if(d.iu)instOp('u',d.iu);else if(d.ie)instOp('e',d.ie);else if(d.ix)instOp('x',d.ix);else if(b.id=='rcancel'){recEdit=null;render()}else if(b.id=='icancel'){instEdit=null;render()}else if(b.id=='jsonEx')exportJson();else if(d.ga)goalOp('a',d.ga);else if(d.gw)goalOp('w',d.gw);else if(d.ge)goalOp('e',d.ge);else if(d.gx)goalOp('x',d.gx)});
 document.addEventListener('submit',e=>{e.preventDefault();
- if(e.target.id=='f')saveTx();else if(e.target.id=='cf')saveCatLimits();else if(e.target.id=='gf')addGoal(e.target);else if(e.target.id=='af')addCat(e.target);
+ if(e.target.id=='f')saveTx();else if(e.target.id=='cf')saveCatLimits();else if(e.target.id=='gf')addGoal(e.target);else if(e.target.id=='af')addCat(e.target);else if(e.target.id=='rf')saveRec(e.target);else if(e.target.id=='nf')saveInst(e.target);
  else if(e.target.id=='bf'){const v=Math.round(parseFloat(e.target.elements.b.value)*100);
   if(!isFinite(v)||v<0||v>1e11)return $('#berr').textContent='Enter a valid amount (0 or more).';
   if(v)S.budgets[month]=v;else delete S.budgets[month];save();render();toast('Budget saved')}});
@@ -272,9 +406,11 @@ document.addEventListener('input',e=>{const i=e.target.id;
  if(['q','fc','ft','fy','fmo'].includes(i)){const v=e.target.value;if(i=='q')q=v;else if(i=='fc')fc=v;else if(i=='ft')ft=v;else if(i=='fy')fy=v;else fmo=v;renderList()}});
 document.addEventListener('change',e=>{
  if(e.target.name=='type'&&e.target.form==F)fillCats();
+ if(e.target.name=='type'&&e.target.form&&e.target.form.id=='rf')fillRc(e.target.form);
+ if(e.target.dataset&&e.target.dataset.p)setPref(e.target);
  if(e.target.id=='jsonIm'){importJson(e.target.files[0]);e.target.value=''}
  if(e.target.id=='mon'&&e.target.value){month=e.target.value;syncF();render()}});
-render();if(loadErr)toast('Saved data was unreadable. A copy was kept and the app started empty.');
+render();notifyDue();if(loadErr)toast('Saved data was unreadable. A copy was kept and the app started empty.');
 </script>
 </body>
 </html>
