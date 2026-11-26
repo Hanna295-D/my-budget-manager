@@ -1,2 +1,2 @@
-# my-budget-manager
+# Budget-Buddy
 Personal Budget &amp; Expense Tracker
