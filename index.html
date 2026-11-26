@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BudgetBuddy</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#2b2d33;--mut:#7b7f89;--line:#ebe9e4;--mint:#d5ece1;--rose:#f6d9da;--lav:#e0dbf3;--peach:#fbe6d3;--inc:#3f8f6b;--exp:#c2646c}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+.app{display:flex;min-height:100vh}
+nav{width:210px;background:var(--card);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;flex-shrink:0}
+.logo{font-weight:700;font-size:17px;margin:0 8px 22px}
+nav button{display:block;width:100%;text-align:left;border:0;background:none;padding:11px 12px;border-radius:12px;color:var(--mut);margin-bottom:4px}
+nav button.on{background:var(--lav);color:var(--ink);font-weight:600}
+main{flex:1;padding:24px;max-width:980px;min-width:0}
+header{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px}
+h1{font-size:24px;margin:0}h2{font-size:16px;margin:0 0 12px}
+.mon{display:flex;gap:6px}.mon input{width:auto}
+button,input,select,textarea{font:inherit}
+input,select,textarea{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff;color:var(--ink);width:100%}
+button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;cursor:pointer;color:var(--ink)}
+button:hover{background:#faf9f7}
+button.pri{background:var(--ink);color:#fff;border-color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{border-radius:16px;padding:16px}.stat small{color:var(--mut);display:block}
+.stat b{font-size:19px;display:block;margin-top:4px;word-break:break-word}
+.inc{color:var(--inc)}.exp{color:var(--exp)}
+.prog{height:12px;background:var(--line);border-radius:9px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--inc)}
+.prog.warn i{background:#e5b46a}.prog.over i{background:var(--exp)}
+.row{display:grid;grid-template-columns:88px 1fr auto auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.m small{display:block;color:var(--mut)}
+.chip,.tag{background:var(--lav);border-radius:20px;padding:2px 10px;font-size:12px}
+.tag{background:var(--peach)}
+.a{font-weight:600;text-align:right}
+.act{display:flex;gap:6px}.act button{padding:4px 9px;font-size:13px}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.bar input{flex:2 1 160px;width:auto}.bar select{flex:1 1 130px;width:auto}
+.empty{color:var(--mut);text-align:center;padding:18px 0}
+.banner{background:var(--peach);border-radius:12px;padding:10px 14px;margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{color:var(--mut);font-size:12.5px;margin-top:24px}
+.cb{display:grid;grid-template-columns:110px 1fr 100px;gap:10px;align-items:center;margin:8px 0}
+.cb .prog i{background:#b9aee6}
+label{display:block;margin-bottom:10px;font-size:13px;color:var(--mut)}
+label input,label select,label textarea{margin-top:4px;color:var(--ink);font-size:15px}
+dialog{border:0;border-radius:18px;padding:22px;width:min(440px,92vw)}
+dialog::backdrop{background:rgba(40,40,50,.35)}
+.end{display:flex;gap:8px;justify-content:flex-end}
+#toast{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+@media(max-width:760px){
+.app{flex-direction:column}
+nav{position:fixed;bottom:0;left:0;right:0;top:auto;width:100%;height:auto;display:flex;padding:6px;z-index:5;border-right:0;border-top:1px solid var(--line)}
+.logo{display:none}
+nav button{text-align:center;padding:9px 2px;font-size:12px;margin:0}
+main{padding:16px 14px 90px}
+.grid{grid-template-columns:1fr 1fr}
+.row{display:flex;flex-wrap:wrap;gap:6px 10px}.m{flex:1 1 100%;order:-1}.a{margin-left:auto}
+.cb{grid-template-columns:90px 1fr 84px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<nav>
+<div class="logo">💰 BudgetBuddy</div>
+<button data-v="dashboard">📊 Dashboard</button>
+<button data-v="transactions">🧾 Transactions</button>
+<button data-v="budget">🎯 Budget</button>
+<button data-v="reports">📈 Reports</button>
+</nav>
+<main>
+<header><h1 id="ttl"></h1><div class="mon"><button id="pm" aria-label="Previous month">‹</button><input type="month" id="mon"><button id="nm" aria-label="Next month">›</button></div></header>
+<div id="demo"></div>
+<div id="main"></div>
+<p class="note">ℹ️ Your data is saved only in this browser's localStorage. It is not secure cloud storage and does not sync between devices. Clearing browser data or using another browser/device means starting empty, so export a CSV regularly as a backup.</p>
+</main>
+</div>
+<dialog id="dlg"><form id="f" novalidate>
+<h2 id="ft2">Add transaction</h2>
+<label>Type<select name="type"><option value="expense">Expense</option><option value="income">Income</option></select></label>
+<label>Description<input name="desc" maxlength="80"></label>
+<label>Amount (RM)<input name="amt" type="number" step="0.01" min="0" inputmode="decimal"></label>
+<label>Date<input name="date" type="date"></label>
+<label>Category<select name="cat"></select></label>
+<label>Notes (optional)<textarea name="notes" rows="2" maxlength="300"></textarea></label>
+<p id="err" class="exp"></p>
+<div class="end"><button type="button" id="cancel">Cancel</button><button class="pri">Save</button></div>
+</form></dialog>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s),KEY='mbm_v1',DLG=$('#dlg'),F=$('#f');
+const CATS={income:['Salary','Freelance','Others'],expense:['Food','Groceries','Transport','Shopping','Bills','Healthcare','Entertainment','Others']};
+const ALL=[...new Set([...CATS.income,...CATS.expense])];
+const pad=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()),ym=d=>ymd(d).slice(0,7);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fmt=c=>(c<0?'-':'')+'RM '+(Math.abs(c)/100).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cmp=(a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id);
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.tx)&&d.budgets)return d}catch(e){}return{tx:[],budgets:{}}}
+let S=load(),view='dashboard',month=ym(new Date()),editId=null,q='',fc='',ft='';
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save: browser storage is unavailable or full.')}}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),2600)}
+const monthTx=m=>S.tx.filter(t=>t.date.startsWith(m));
+const sums=l=>l.reduce((s,t)=>(s[t.type=='income'?'inc':'exp']+=t.amt,s),{inc:0,exp:0});
+function budgetFor(m){const k=Object.keys(S.budgets).filter(x=>x<=m).sort();return k.length?S.budgets[k.pop()]:0}
+const row=t=>`<div class="row"><div>${t.date}</div><div class="m"><b>${esc(t.desc)}</b>${t.demo?' <span class="tag">demo</span>':''}<small>${esc(t.notes||'')}</small></div><span class="chip">${esc(t.cat)}</span><div class="a ${t.type=='income'?'inc':'exp'}">${t.type=='income'?'+':'−'}${fmt(t.amt)}</div><div class="act"><button data-e="${t.id}">Edit</button><button data-x="${t.id}">Delete</button></div></div>`;
+function prog(){const b=budgetFor(month),e=sums(monthTx(month)).exp;
+ if(!b)return'<p class="empty">No budget set yet. <button data-v="budget">Set a budget</button></p>';
+ const p=e/b*100,left=b-e;
+ return`<div class="prog ${p>100?'over':p>=80?'warn':''}"><i style="width:${Math.min(100,p)}%"></i></div><p>${fmt(e)} of ${fmt(b)} spent (${p.toFixed(0)}%) · ${left>=0?fmt(left)+' left':'<b class="exp">'+fmt(-left)+' over budget</b>'}</p>`}
+function dash(){const l=monthTx(month),s=sums(l),b=budgetFor(month),rec=[...l].sort(cmp).slice(0,5);
+ return`<div class="grid"><div class="stat" style="background:var(--mint)"><small>Total income</small><b>${fmt(s.inc)}</b></div><div class="stat" style="background:var(--rose)"><small>Total expenses</small><b>${fmt(s.exp)}</b></div><div class="stat" style="background:var(--lav)"><small>Remaining balance</small><b>${fmt(s.inc-s.exp)}</b></div><div class="stat" style="background:var(--peach)"><small>Monthly budget</small><b>${b?fmt(b):'Not set'}</b></div></div>
+<div class="card"><h2>Budget progress</h2>${prog()}</div>
+<div class="card"><h2>Recent transactions</h2>${rec.length?rec.map(row).join(''):'<p class="empty">No transactions this month yet.</p>'}<p><button class="pri" id="add">+ Add transaction</button></p></div>`}
+function txView(){const o=a=>a.map(c=>`<option>${c}</option>`).join('');
+ return`<div class="bar"><input id="q" type="search" placeholder="Search description or notes…" value="${esc(q)}"><select id="fc"><option value="">All categories</option>${o(ALL)}</select><select id="ft"><option value="">Income &amp; expenses</option><option value="income">Income only</option><option value="expense">Expenses only</option></select><button class="pri" id="add">+ Add</button><button id="csv">Export CSV</button></div><div class="card" id="list"></div>`}
+function renderList(){$('#fc').value=fc;$('#ft').value=ft;
+ const n=q.trim().toLowerCase(),all=monthTx(month),l=all.filter(t=>(!fc||t.cat==fc)&&(!ft||t.type==ft)&&(!n||(t.desc+' '+(t.notes||'')).toLowerCase().includes(n))).sort(cmp),s=sums(l);
+ $('#list').innerHTML=l.length?`<p style="color:var(--mut);margin-top:0">${l.length} transaction${l.length>1?'s':''} · Income ${fmt(s.inc)} · Expenses ${fmt(s.exp)}</p>`+l.map(row).join(''):`<p class="empty">${all.length?'No transactions match your search or filters.':'No transactions in this month yet. Click “+ Add” to create one.'}</p>`}
+function budView(){const b=budgetFor(month),own=S.budgets[month]!=null,demo=S.tx.some(t=>t.demo);
+ return`<div class="card"><h2>Monthly budget for ${month}</h2><form id="bf" novalidate><label>Budget amount (RM)<input name="b" type="number" step="0.01" min="0" inputmode="decimal" value="${b?(b/100).toFixed(2):''}"></label><p id="berr" class="exp"></p><button class="pri">Save budget</button> ${own?'<button type="button" id="bRm">Remove this month’s budget</button>':''}</form><p class="note">A budget applies to the selected month and carries forward to later months until you set a new one.</p></div>
+<div class="card"><h2>Spending progress</h2>${prog()}</div>
+<div class="card"><h2>Data</h2><p><button id="demoLoad">Load demo data</button> ${demo?'<button id="demoRm">Remove demo data</button>':''} <button id="wipe" class="exp">Delete ALL data</button></p><p class="note">Demo data is clearly labelled “demo” and is not real. Delete ALL data removes every transaction and budget from this browser.</p></div>`}
+function repView(){const[y,m]=month.split('-').map(Number),ms=[];
+ for(let i=5;i>=0;i--){const d=new Date(y,m-1-i,1);ms.push({l:d.toLocaleString('en-GB',{month:'short'})+' '+String(d.getFullYear()).slice(2),...sums(monthTx(ym(d)))})}
+ const mx=Math.max(1,...ms.flatMap(x=>[x.inc,x.exp])),H=180,T=15;
+ const bar=(x,v,c,t)=>{const h=v/mx*H;return`<rect x="${x}" y="${T+H-h}" width="30" height="${h}" rx="4" fill="${c}"><title>${t}: ${fmt(v)}</title></rect>`};
+ const svg=ms.map((x,i)=>{const o=i*100+10;return bar(o+10,x.inc,'#9fd5bb','Income')+bar(o+44,x.exp,'#eeb0b4','Expenses')+`<text x="${o+45}" y="${T+H+20}" text-anchor="middle" font-size="12" fill="#7b7f89">${x.l}</text>`}).join('');
+ const by={};monthTx(month).filter(t=>t.type=='expense').forEach(t=>by[t.cat]=(by[t.cat]||0)+t.amt);
+ const ent=Object.entries(by).sort((a,b)=>b[1]-a[1]),tot=ent.reduce((a,e)=>a+e[1],0);
+ return`<div class="card"><h2>Income vs expenses (last 6 months)</h2>${ms.some(x=>x.inc||x.exp)?`<svg viewBox="0 0 600 215" width="100%" role="img" aria-label="Income versus expenses chart"><line x1="0" x2="600" y1="${T+H}" y2="${T+H}" stroke="#ebe9e4"/>${svg}</svg><p><span style="color:#5aae86">■</span> Income &nbsp; <span style="color:#d98b91">■</span> Expenses &nbsp; <small style="color:var(--mut)">Tap/hover a bar for the exact amount. Tallest bar = ${fmt(mx)}.</small></p>`:'<p class="empty">No data for these months yet.</p>'}</div>
+<div class="card"><h2>Expenses by category (${month})</h2>${ent.length?ent.map(([c,v])=>`<div class="cb"><span>${esc(c)}</span><div class="prog"><i style="width:${v/tot*100}%"></i></div><span style="text-align:right">${fmt(v)}</span></div>`).join(''):'<p class="empty">No expenses this month.</p>'}</div>`}
+const V={dashboard:'Dashboard',transactions:'Transactions',budget:'Budget',reports:'Reports'};
+function render(){
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==view));
+ $('#ttl').textContent=V[view];$('#mon').value=month;
+ $('#demo').innerHTML=S.tx.some(t=>t.demo)?'<div class="banner">Demo data is present. These are NOT real records. <button id="demoRm">Remove demo data</button></div>':'';
+ $('#main').innerHTML=({dashboard:dash,transactions:txView,budget:budView,reports:repView})[view]();
+ if(view=='transactions')renderList();
+}
+function fillCats(sel){const e=F.elements,l=CATS[e.type.value];e.cat.innerHTML=l.map(c=>`<option>${c}</option>`).join('');if(sel&&l.includes(sel))e.cat.value=sel}
+function openForm(id){editId=id||null;const t=id?S.tx.find(x=>x.id==id):null,e=F.elements;
+ $('#ft2').textContent=t?'Edit transaction':'Add transaction';
+ e.type.value=t?t.type:'expense';fillCats(t&&t.cat);e.desc.value=t?t.desc:'';e.amt.value=t?(t.amt/100).toFixed(2):'';
+ e.date.value=t?t.date:(month==ym(new Date())?ymd(new Date()):month+'-01');e.notes.value=t?t.notes||'':'';
+ $('#err').textContent='';DLG.showModal()}
+function saveTx(){const e=F.elements,desc=e.desc.value.trim(),a=Math.round(parseFloat(e.amt.value)*100),date=e.date.value,er=m=>{$('#err').textContent=m};
+ if(!desc)return er('Please enter a description.');
+ if(!isFinite(a)||a<=0)return er('Enter an amount greater than RM 0.00.');
+ if(a>1e11)return er('Amount is too large.');
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(Date.parse(date)))return er('Please choose a valid date.');
+ const o={desc,amt:a,date,type:e.type.value,cat:e.cat.value,notes:e.notes.value.trim()};
+ if(editId){const t=S.tx.find(x=>x.id==editId);Object.assign(t,o);delete t.demo}else S.tx.push({id:uid(),...o});
+ save();month=date.slice(0,7);DLG.close();render();toast(editId?'Transaction updated':'Transaction added')}
+function del(id){const t=S.tx.find(x=>x.id==id);if(t&&confirm('Delete “'+t.desc+'” ('+fmt(t.amt)+')?')){S.tx=S.tx.filter(x=>x.id!=id);save();render();toast('Deleted')}}
+function demo(){const b=new Date();
+ const mk=(off,day,desc,amt,type,cat)=>({id:uid(),desc,amt,date:ymd(new Date(b.getFullYear(),b.getMonth()-off,day)),type,cat,notes:'Demo data',demo:true});
+ for(let o=0;o<3;o++)S.tx.push(mk(o,1,'Monthly salary',450000,'income','Salary'),mk(o,3,'Groceries run',28050,'expense','Groceries'),mk(o,8,'Lunch & coffee',4550+o*900,'expense','Food'),mk(o,12,'Electricity & internet',35000,'expense','Bills'),mk(o,15,'Touch n Go top-up',12000,'expense','Transport'),mk(o,20,'Movie night',6000,'expense','Entertainment'));
+ S.tx.push(mk(1,10,'Freelance project',80000,'income','Freelance'));save();render();toast('Demo data loaded')}
+function exportCsv(){if(!S.tx.length)return toast('Nothing to export yet');
+ const q=v=>{v=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(v))v="'"+v;return'"'+v.replace(/"/g,'""')+'"'};
+ const rows=[['Date','Type','Category','Description','Amount (RM)','Notes','Demo']].concat([...S.tx].sort(cmp).reverse().map(t=>[t.date,t.type,t.cat,t.desc,(t.amt/100).toFixed(2),t.notes||'',t.demo?'yes':'']));
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
+ a.download='budgetbuddy-transactions-'+ymd(new Date())+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500);toast('CSV exported (all months)')}
+const shift=n=>{const[y,m]=month.split('-').map(Number);month=ym(new Date(y,m-1+n,1));render()};
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const d=b.dataset;
+ if(d.v){view=d.v;render()}else if(d.e)openForm(d.e);else if(d.x)del(d.x);
+ else if(b.id=='add')openForm();else if(b.id=='cancel')DLG.close();else if(b.id=='csv')exportCsv();
+ else if(b.id=='pm')shift(-1);else if(b.id=='nm')shift(1);else if(b.id=='demoLoad')demo();
+ else if(b.id=='demoRm'){S.tx=S.tx.filter(t=>!t.demo);save();render();toast('Demo data removed')}
+ else if(b.id=='bRm'){delete S.budgets[month];save();render()}
+ else if(b.id=='wipe'&&confirm('Delete ALL transactions and budgets from this browser? This cannot be undone.')){S={tx:[],budgets:{}};save();render()}});
+document.addEventListener('submit',e=>{e.preventDefault();
+ if(e.target.id=='f')saveTx();
+ else if(e.target.id=='bf'){const v=Math.round(parseFloat(e.target.elements.b.value)*100);
+  if(!isFinite(v)||v<0||v>1e11)return $('#berr').textContent='Enter a valid amount (0 or more).';
+  if(v)S.budgets[month]=v;else delete S.budgets[month];save();render();toast('Budget saved')}});
+document.addEventListener('input',e=>{const i=e.target.id;
+ if(i=='q'||i=='fc'||i=='ft'){if(i=='q')q=e.target.value;else if(i=='fc')fc=e.target.value;else ft=e.target.value;renderList()}});
+document.addEventListener('change',e=>{
+ if(e.target.name=='type'&&e.target.form==F)fillCats();
+ if(e.target.id=='mon'&&e.target.value){month=e.target.value;render()}});
+render();
+</script>
+</body>
+</html>
